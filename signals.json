@@ -1,5 +1,5 @@
 {
-    "last_updated": "2026-09-28 16:45:23",
+    "last_updated": "2026-09-28 16:48:12",
     "macro": {
         "nifty_trend": "BEARISH",
         "nifty_change_pct": -1.11,
@@ -23,52 +23,7 @@
             "option_strike": "2050 PE",
             "target": 2037.57,
             "stop_loss": 2087.27,
-            "updated_at": "16:45:22"
-        },
-        {
-            "symbol": "HDFCBANK",
-            "price": 719.05,
-            "ema9": 719.4,
-            "ema21": 719.9,
-            "rsi": 32.8,
-            "volume": 425568,
-            "signal": "BEARISH BIAS",
-            "probability": "66%",
-            "risk": "MODERATE",
-            "option_strike": "720 PE",
-            "target": 707.55,
-            "stop_loss": 724.8,
-            "updated_at": "16:45:22"
-        },
-        {
-            "symbol": "ITC",
-            "price": 265.2,
-            "ema9": 265.8,
-            "ema21": 265.97,
-            "rsi": 37.7,
-            "volume": 382998,
-            "signal": "BEARISH BIAS",
-            "probability": "66%",
-            "risk": "MODERATE",
-            "option_strike": "265 PE",
-            "target": 260.96,
-            "stop_loss": 267.32,
-            "updated_at": "16:45:22"
-        },
-        {
-            "symbol": "BHARTIARTL",
-            "price": 1771.4,
-            "ema9": 1775.98,
-            "ema21": 1776.24,
-            "rsi": 44.7,
-            "volume": 266707,
-            "signal": "SELL",
-            "probability": "78%",
-            "risk": "LOW",
-            "option_strike": "1780 PE",
-            "target": 1743.06,
-            "stop_loss": 1785.57,
-            "updated_at": "16:45:23"
+            "updated_at": "16:48:11"
         },
         {
             "symbol": "INFY",
@@ -83,37 +38,7 @@
             "option_strike": "HOLD",
             "target": 987.15,
             "stop_loss": 1011.23,
-            "updated_at": "16:45:23"
-        },
-        {
-            "symbol": "RELIANCE",
-            "price": 1197.6,
-            "ema9": 1198.72,
-            "ema21": 1200.36,
-            "rsi": 23.5,
-            "volume": 479644,
-            "signal": "BEARISH BIAS",
-            "probability": "66%",
-            "risk": "MODERATE",
-            "option_strike": "1200 PE",
-            "target": 1178.44,
-            "stop_loss": 1207.18,
-            "updated_at": "16:45:23"
-        },
-        {
-            "symbol": "ICICIBANK",
-            "price": 1302.0,
-            "ema9": 1302.03,
-            "ema21": 1303.11,
-            "rsi": 30.6,
-            "volume": 476637,
-            "signal": "BEARISH BIAS",
-            "probability": "66%",
-            "risk": "MODERATE",
-            "option_strike": "1300 PE",
-            "target": 1281.17,
-            "stop_loss": 1312.42,
-            "updated_at": "16:45:23"
+            "updated_at": "16:48:11"
         },
         {
             "symbol": "SBIN",
@@ -128,7 +53,82 @@
             "option_strike": "960 CE",
             "target": 977.39,
             "stop_loss": 954.3,
-            "updated_at": "16:45:23"
+            "updated_at": "16:48:11"
+        },
+        {
+            "symbol": "ICICIBANK",
+            "price": 1302.0,
+            "ema9": 1302.03,
+            "ema21": 1303.11,
+            "rsi": 30.6,
+            "volume": 476637,
+            "signal": "BEARISH BIAS",
+            "probability": "66%",
+            "risk": "MODERATE",
+            "option_strike": "1300 PE",
+            "target": 1281.17,
+            "stop_loss": 1312.42,
+            "updated_at": "16:48:11"
+        },
+        {
+            "symbol": "ITC",
+            "price": 265.2,
+            "ema9": 265.8,
+            "ema21": 265.97,
+            "rsi": 37.7,
+            "volume": 382998,
+            "signal": "BEARISH BIAS",
+            "probability": "66%",
+            "risk": "MODERATE",
+            "option_strike": "265 PE",
+            "target": 260.96,
+            "stop_loss": 267.32,
+            "updated_at": "16:48:11"
+        },
+        {
+            "symbol": "HDFCBANK",
+            "price": 719.05,
+            "ema9": 719.4,
+            "ema21": 719.9,
+            "rsi": 32.8,
+            "volume": 425568,
+            "signal": "BEARISH BIAS",
+            "probability": "66%",
+            "risk": "MODERATE",
+            "option_strike": "720 PE",
+            "target": 707.55,
+            "stop_loss": 724.8,
+            "updated_at": "16:48:11"
+        },
+        {
+            "symbol": "BHARTIARTL",
+            "price": 1771.4,
+            "ema9": 1775.98,
+            "ema21": 1776.24,
+            "rsi": 44.7,
+            "volume": 266707,
+            "signal": "SELL",
+            "probability": "78%",
+            "risk": "LOW",
+            "option_strike": "1780 PE",
+            "target": 1743.06,
+            "stop_loss": 1785.57,
+            "updated_at": "16:48:11"
+        },
+        {
+            "symbol": "RELIANCE",
+            "price": 1197.6,
+            "ema9": 1198.72,
+            "ema21": 1200.36,
+            "rsi": 23.5,
+            "volume": 479644,
+            "signal": "BEARISH BIAS",
+            "probability": "66%",
+            "risk": "MODERATE",
+            "option_strike": "1200 PE",
+            "target": 1178.44,
+            "stop_loss": 1207.18,
+            "updated_at": "16:48:11"
         },
         {
             "symbol": "LT",
@@ -143,7 +143,7 @@
             "option_strike": "3750 PE",
             "target": 3706.14,
             "stop_loss": 3796.53,
-            "updated_at": "16:45:23"
+            "updated_at": "16:48:11"
         },
         {
             "symbol": "HINDUNILVR",
@@ -158,37 +158,7 @@
             "option_strike": "1900 PE",
             "target": 1865.66,
             "stop_loss": 1911.17,
-            "updated_at": "16:45:23"
-        },
-        {
-            "symbol": "BAJFINANCE",
-            "price": 985.0,
-            "ema9": 983.19,
-            "ema21": 982.24,
-            "rsi": 64.7,
-            "volume": 238334,
-            "signal": "BULLISH BIAS",
-            "probability": "50%",
-            "risk": "HIGH",
-            "option_strike": "980 CE",
-            "target": 1000.76,
-            "stop_loss": 977.12,
-            "updated_at": "16:45:23"
-        },
-        {
-            "symbol": "ADANIENT",
-            "price": 2831.1,
-            "ema9": 2823.4,
-            "ema21": 2825.65,
-            "rsi": 50.2,
-            "volume": 10244,
-            "signal": "NEUTRAL",
-            "probability": "50%",
-            "risk": "MODERATE",
-            "option_strike": "HOLD",
-            "target": 2785.8,
-            "stop_loss": 2853.75,
-            "updated_at": "16:45:23"
+            "updated_at": "16:48:11"
         },
         {
             "symbol": "HCLTECH",
@@ -203,7 +173,7 @@
             "option_strike": "1260 PE",
             "target": 1232.56,
             "stop_loss": 1262.62,
-            "updated_at": "16:45:23"
+            "updated_at": "16:48:11"
         },
         {
             "symbol": "MARUTI",
@@ -218,22 +188,37 @@
             "option_strike": "HOLD",
             "target": 11815.87,
             "stop_loss": 12104.06,
-            "updated_at": "16:45:23"
+            "updated_at": "16:48:11"
         },
         {
-            "symbol": "KOTAKBANK",
-            "price": 401.55,
-            "ema9": 402.31,
-            "ema21": 402.05,
-            "rsi": 45.7,
-            "volume": 597588,
+            "symbol": "BAJFINANCE",
+            "price": 985.0,
+            "ema9": 983.19,
+            "ema21": 982.24,
+            "rsi": 64.7,
+            "volume": 238334,
+            "signal": "BULLISH BIAS",
+            "probability": "50%",
+            "risk": "HIGH",
+            "option_strike": "980 CE",
+            "target": 1000.76,
+            "stop_loss": 977.12,
+            "updated_at": "16:48:11"
+        },
+        {
+            "symbol": "ADANIENT",
+            "price": 2831.1,
+            "ema9": 2823.4,
+            "ema21": 2825.65,
+            "rsi": 50.2,
+            "volume": 10244,
             "signal": "NEUTRAL",
             "probability": "50%",
             "risk": "MODERATE",
             "option_strike": "HOLD",
-            "target": 395.13,
-            "stop_loss": 404.76,
-            "updated_at": "16:45:23"
+            "target": 2785.8,
+            "stop_loss": 2853.75,
+            "updated_at": "16:48:11"
         },
         {
             "symbol": "SUNPHARMA",
@@ -248,37 +233,22 @@
             "option_strike": "1840 PE",
             "target": 1808.59,
             "stop_loss": 1852.7,
-            "updated_at": "16:45:23"
+            "updated_at": "16:48:11"
         },
         {
-            "symbol": "NTPC",
-            "price": 321.1,
-            "ema9": 321.15,
-            "ema21": 321.21,
-            "rsi": 55.7,
-            "volume": 169454,
+            "symbol": "KOTAKBANK",
+            "price": 401.55,
+            "ema9": 402.31,
+            "ema21": 402.05,
+            "rsi": 45.7,
+            "volume": 597588,
             "signal": "NEUTRAL",
             "probability": "50%",
             "risk": "MODERATE",
             "option_strike": "HOLD",
-            "target": 315.96,
-            "stop_loss": 323.67,
-            "updated_at": "16:45:23"
-        },
-        {
-            "symbol": "AXISBANK",
-            "price": 1209.9,
-            "ema9": 1208.46,
-            "ema21": 1208.39,
-            "rsi": 57.5,
-            "volume": 85173,
-            "signal": "BUY",
-            "probability": "64%",
-            "risk": "HIGH",
-            "option_strike": "1200 CE",
-            "target": 1229.26,
-            "stop_loss": 1200.22,
-            "updated_at": "16:45:23"
+            "target": 395.13,
+            "stop_loss": 404.76,
+            "updated_at": "16:48:11"
         },
         {
             "symbol": "ONGC",
@@ -293,7 +263,37 @@
             "option_strike": "230 PE",
             "target": 226.32,
             "stop_loss": 231.84,
-            "updated_at": "16:45:23"
+            "updated_at": "16:48:12"
+        },
+        {
+            "symbol": "NTPC",
+            "price": 321.1,
+            "ema9": 321.15,
+            "ema21": 321.21,
+            "rsi": 55.7,
+            "volume": 169454,
+            "signal": "NEUTRAL",
+            "probability": "50%",
+            "risk": "MODERATE",
+            "option_strike": "HOLD",
+            "target": 315.96,
+            "stop_loss": 323.67,
+            "updated_at": "16:48:12"
+        },
+        {
+            "symbol": "AXISBANK",
+            "price": 1209.9,
+            "ema9": 1208.46,
+            "ema21": 1208.39,
+            "rsi": 57.5,
+            "volume": 85173,
+            "signal": "BUY",
+            "probability": "64%",
+            "risk": "HIGH",
+            "option_strike": "1200 CE",
+            "target": 1229.26,
+            "stop_loss": 1200.22,
+            "updated_at": "16:48:12"
         },
         {
             "symbol": "TITAN",
@@ -308,7 +308,7 @@
             "option_strike": "4800 PE",
             "target": 4742.39,
             "stop_loss": 4858.06,
-            "updated_at": "16:45:23"
+            "updated_at": "16:48:12"
         }
     ]
 }
