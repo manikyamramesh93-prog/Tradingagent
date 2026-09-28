@@ -1,0 +1,727 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NSE Intraday Pro Scanner & Options Terminal (Persistent Storage)</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            terminal: {
+              bg: '#0a0d14',
+              panel: '#101522',
+              card: '#151c2e',
+              border: '#1f293d',
+              accent: '#3875f6',
+              bullish: '#10b981',
+              bearish: '#ef4444',
+              warning: '#f59e0b',
+              subtext: '#94a3b8'
+            }
+          },
+          fontFamily: {
+            mono: ['JetBrains Mono', 'Fira Code', 'Menlo', 'monospace'],
+            sans: ['Inter', 'system-ui', 'sans-serif']
+          }
+        }
+      }
+    };
+  </script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <style>
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #0a0d14; }
+    ::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: #334155; }
+    @keyframes pulseGlow { 0%, 100% { opacity: 0.9; } 50% { opacity: 0.3; } }
+    .live-dot { animation: pulseGlow 1.8s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+  </style>
+</head>
+<body class="bg-[#0a0d14] text-slate-100 font-sans antialiased min-h-screen flex flex-col selection:bg-terminal-accent selection:text-white">
+
+  <!-- Header -->
+  <header class="border-b border-terminal-border bg-terminal-panel/90 backdrop-blur sticky top-0 z-40 px-4 lg:px-8 py-3.5">
+    <div class="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
+      
+      <div class="flex items-center gap-3 w-full md:w-auto justify-between md:justify-start">
+        <div class="flex items-center gap-2.5">
+          <div class="p-2 bg-gradient-to-tr from-blue-600 to-indigo-500 rounded-lg shadow-lg shadow-blue-500/20">
+            <i data-lucide="activity" class="w-5 h-5 text-white"></i>
+          </div>
+          <div>
+            <div class="flex items-center gap-2">
+              <span class="font-bold text-lg tracking-tight bg-gradient-to-r from-blue-400 via-indigo-300 to-emerald-400 bg-clip-text text-transparent">
+                NIFTY PRO SCANNER
+              </span>
+              <span id="live-indicator-badge" class="px-2 py-0.5 rounded text-[10px] font-mono tracking-wider bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center gap-1">
+                <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 live-dot"></span> LIVE SCANNER
+              </span>
+            </div>
+            <p class="text-xs text-terminal-subtext font-mono">NSE Top 20 Universe | Synced with nifty500_scanner.py</p>
+          </div>
+        </div>
+
+        <div class="md:hidden flex items-center gap-2 text-xs font-mono">
+          <span class="text-terminal-subtext" id="mobile-clock">--:--:--</span>
+        </div>
+      </div>
+
+      <!-- Feed Status -->
+      <div class="hidden lg:flex items-center gap-6 font-mono text-xs border border-terminal-border bg-terminal-bg/70 px-4 py-2 rounded-lg">
+        <div class="flex items-center gap-2">
+          <span class="text-terminal-subtext">STATUS:</span>
+          <span class="font-semibold text-emerald-400" id="feed-status">Connected</span>
+        </div>
+        <div class="w-px h-3 bg-terminal-border"></div>
+        <div class="flex items-center gap-2">
+          <span class="text-terminal-subtext">UPDATED:</span>
+          <span class="font-semibold text-slate-200" id="last-updated-time">Waiting...</span>
+        </div>
+      </div>
+
+      <!-- Controls -->
+      <div class="flex items-center gap-3 w-full md:w-auto justify-end">
+        <div class="flex items-center gap-2 text-xs font-mono bg-terminal-card border border-terminal-border px-3 py-1.5 rounded-lg text-slate-300">
+          <i data-lucide="clock" class="w-3.5 h-3.5 text-blue-400"></i>
+          <span>Next Poll: <strong class="text-emerald-400 font-bold" id="countdown-timer">3m 00s</strong></span>
+        </div>
+
+        <button id="manual-refresh-btn" class="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-500 active:scale-95 transition-all text-xs font-semibold px-3 py-1.5 rounded-lg text-white shadow-md shadow-blue-600/20">
+          <i data-lucide="refresh-cw" class="w-3.5 h-3.5" id="refresh-icon"></i>
+          <span>Re-Poll</span>
+        </button>
+
+        <button id="view-orders-btn" class="flex items-center gap-1.5 bg-terminal-card hover:bg-terminal-border border border-terminal-border transition-all text-xs font-medium px-3 py-1.5 rounded-lg text-slate-200">
+          <i data-lucide="briefcase" class="w-3.5 h-3.5 text-emerald-400"></i>
+          <span>Paper Ledger (<span id="active-orders-count">0</span>)</span>
+        </button>
+      </div>
+
+    </div>
+  </header>
+
+  <main class="flex-1 max-w-7xl w-full mx-auto px-4 lg:px-8 py-6 space-y-6">
+
+    <!-- Stat Cards -->
+    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 lg:gap-4">
+      <div class="bg-terminal-panel border border-terminal-border rounded-xl p-4 flex flex-col justify-between">
+        <span class="text-xs text-terminal-subtext font-mono flex items-center justify-between">
+          <span>HIGH PROBABILITY (>75%)</span>
+          <i data-lucide="sparkles" class="w-3.5 h-3.5 text-blue-400"></i>
+        </span>
+        <div class="mt-2 flex items-baseline gap-2">
+          <span class="text-2xl font-bold font-mono text-white" id="stat-high-prob">0</span>
+          <span class="text-xs text-emerald-400 font-mono">Setups Ready</span>
+        </div>
+      </div>
+
+      <div class="bg-terminal-panel border border-terminal-border rounded-xl p-4 flex flex-col justify-between">
+        <span class="text-xs text-terminal-subtext font-mono flex items-center justify-between">
+          <span>BULLISH / BUY</span>
+          <i data-lucide="trending-up" class="w-3.5 h-3.5 text-emerald-400"></i>
+        </span>
+        <div class="mt-2 flex items-baseline gap-2">
+          <span class="text-2xl font-bold font-mono text-emerald-400" id="stat-bullish-count">0</span>
+          <span class="text-xs text-terminal-subtext font-mono">Stocks (CE)</span>
+        </div>
+      </div>
+
+      <div class="bg-terminal-panel border border-terminal-border rounded-xl p-4 flex flex-col justify-between">
+        <span class="text-xs text-terminal-subtext font-mono flex items-center justify-between">
+          <span>BEARISH / SELL</span>
+          <i data-lucide="trending-down" class="w-3.5 h-3.5 text-rose-400"></i>
+        </span>
+        <div class="mt-2 flex items-baseline gap-2">
+          <span class="text-2xl font-bold font-mono text-rose-400" id="stat-bearish-count">0</span>
+          <span class="text-xs text-terminal-subtext font-mono">Stocks (PE)</span>
+        </div>
+      </div>
+
+      <div class="bg-terminal-panel border border-terminal-border rounded-xl p-4 flex flex-col justify-between">
+        <span class="text-xs text-terminal-subtext font-mono flex items-center justify-between">
+          <span>PAPER P&L (PERSISTENT)</span>
+          <i data-lucide="wallet" class="w-3.5 h-3.5 text-indigo-400"></i>
+        </span>
+        <div class="mt-2 flex items-baseline gap-2">
+          <span class="text-2xl font-bold font-mono" id="stat-portfolio-pnl">₹0.00</span>
+          <span class="text-[11px] text-terminal-subtext font-mono" id="stat-portfolio-equity">Cap: ₹1,00,000</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Filters & Sorters -->
+    <div class="bg-terminal-panel border border-terminal-border rounded-xl p-4 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
+      <div class="flex items-center gap-1.5 bg-terminal-bg p-1 rounded-lg border border-terminal-border overflow-x-auto text-xs font-medium">
+        <button class="filter-btn active-filter px-3 py-1.5 rounded-md transition-colors bg-blue-600 text-white font-semibold" data-filter="ALL">
+          All Stocks (<span id="count-all">0</span>)
+        </button>
+        <button class="filter-btn px-3 py-1.5 rounded-md transition-colors text-slate-400 hover:text-white" data-filter="BUY">
+          🟢 BUY / CE (<span id="count-buy">0</span>)
+        </button>
+        <button class="filter-btn px-3 py-1.5 rounded-md transition-colors text-slate-400 hover:text-white" data-filter="SELL">
+          🔴 SELL / PE (<span id="count-sell">0</span>)
+        </button>
+        <button class="filter-btn px-3 py-1.5 rounded-md transition-colors text-slate-400 hover:text-white" data-filter="HIGH_PROB">
+          ⚡ 75%+ Win Prob
+        </button>
+      </div>
+
+      <div class="flex items-center gap-3">
+        <div class="relative flex-1 md:w-56">
+          <i data-lucide="search" class="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-terminal-subtext"></i>
+          <input
+            type="text"
+            id="search-input"
+            placeholder="Search symbol (e.g. INFY)..."
+            class="w-full bg-terminal-bg border border-terminal-border text-xs rounded-lg pl-8 pr-3 py-1.5 text-slate-100 placeholder-slate-500 focus:outline-none focus:border-blue-500 font-mono"
+          />
+        </div>
+
+        <select id="sort-select" class="bg-terminal-bg border border-terminal-border text-xs rounded-lg px-3 py-1.5 text-slate-200 focus:outline-none focus:border-blue-500 font-mono">
+          <option value="prob-desc">Probability: High → Low</option>
+          <option value="prob-asc">Probability: Low → High</option>
+          <option value="risk-asc">Risk: Low → High</option>
+          <option value="risk-desc">Risk: High → Low</option>
+          <option value="ltp-desc">LTP: High → Low</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Data Table -->
+    <div class="bg-terminal-panel border border-terminal-border rounded-xl overflow-hidden shadow-2xl">
+      <div class="overflow-x-auto">
+        <table class="w-full text-left text-xs font-mono border-collapse">
+          <thead>
+            <tr class="bg-terminal-card/80 border-b border-terminal-border text-[11px] text-terminal-subtext tracking-wider uppercase">
+              <th class="py-3 px-4">Instrument</th>
+              <th class="py-3 px-3">LTP (₹)</th>
+              <th class="py-3 px-3">9 EMA</th>
+              <th class="py-3 px-3">21 EMA</th>
+              <th class="py-3 px-3">RSI (14)</th>
+              <th class="py-3 px-4">Intraday Signal</th>
+              <th class="py-3 px-3">Win Prob %</th>
+              <th class="py-3 px-3">Risk Factor</th>
+              <th class="py-3 px-4">Recommended Strike</th>
+              <th class="py-3 px-3">SL / Target</th>
+              <th class="py-3 px-4 text-right">Action</th>
+            </tr>
+          </thead>
+          <tbody id="stocks-table-body" class="divide-y divide-terminal-border/60">
+            <tr>
+              <td colspan="11" class="text-center py-12 text-slate-500">
+                <i data-lucide="loader" class="w-6 h-6 mx-auto animate-spin mb-2 text-blue-500"></i>
+                Connecting to live Python scanner output...
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div id="no-results-msg" class="hidden py-12 text-center text-slate-500 font-mono text-sm">
+        <i data-lucide="filter-x" class="w-8 h-8 mx-auto text-slate-600 mb-2"></i>
+        No stocks matching the selected criteria.
+      </div>
+    </div>
+  </main>
+
+  <!-- Trade Modal -->
+  <div id="trade-modal" class="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm hidden items-center justify-center p-4">
+    <div class="bg-terminal-panel border border-terminal-border rounded-xl w-full max-w-md p-6 font-mono space-y-4 shadow-2xl relative">
+      <div class="flex items-center justify-between border-b border-terminal-border pb-3">
+        <div class="flex items-center gap-2">
+          <span id="modal-badge" class="px-2 py-0.5 rounded text-xs font-bold uppercase">BUY ORDER</span>
+          <h3 class="text-base font-bold text-white" id="modal-symbol">RELIANCE</h3>
+        </div>
+        <button id="close-modal-btn" class="text-slate-400 hover:text-white">
+          <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
+      </div>
+
+      <div class="space-y-2 text-xs">
+        <div class="flex justify-between py-1 border-b border-terminal-border/50">
+          <span class="text-terminal-subtext">Live Execution Price:</span>
+          <span class="font-semibold text-white" id="modal-price">₹0.00</span>
+        </div>
+        <div class="flex justify-between py-1 border-b border-terminal-border/50">
+          <span class="text-terminal-subtext">Option Contract:</span>
+          <span class="font-semibold text-blue-400" id="modal-option">--</span>
+        </div>
+        <div class="flex justify-between py-1 border-b border-terminal-border/50">
+          <span class="text-terminal-subtext">Calculated Stop-Loss (SL):</span>
+          <span class="font-semibold text-rose-400" id="modal-sl">₹0.00</span>
+        </div>
+        <div class="flex justify-between py-1 border-b border-terminal-border/50">
+          <span class="text-terminal-subtext">Calculated Target (TP):</span>
+          <span class="font-semibold text-emerald-400" id="modal-tp">₹0.00</span>
+        </div>
+        <div class="flex justify-between py-1 border-b border-terminal-border/50">
+          <span class="text-terminal-subtext">Win Probability:</span>
+          <span class="font-semibold text-emerald-400" id="modal-prob">--</span>
+        </div>
+        <div class="flex justify-between py-1 pt-2 items-center">
+          <span class="text-terminal-subtext">Virtual Shares / Lots:</span>
+          <input type="number" id="modal-qty" value="50" min="1" max="5000" class="w-24 bg-terminal-bg border border-terminal-border rounded px-2 py-1 text-right text-white focus:outline-none focus:border-blue-500 font-bold" />
+        </div>
+      </div>
+
+      <div class="pt-2 flex gap-3">
+        <button id="confirm-trade-btn" class="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2.5 rounded-lg text-xs tracking-wider transition-all">
+          EXECUTE SIMULATED ORDER
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Positions Ledger Drawer -->
+  <div id="ledger-drawer" class="fixed inset-y-0 right-0 w-full sm:w-96 bg-terminal-panel border-l border-terminal-border z-50 p-6 font-mono transform translate-x-full transition-transform duration-300 shadow-2xl flex flex-col">
+    <div class="flex items-center justify-between pb-4 border-b border-terminal-border">
+      <div class="flex items-center gap-2">
+        <i data-lucide="layers" class="w-4 h-4 text-emerald-400"></i>
+        <h3 class="font-bold text-white text-sm">Active Simulated Positions</h3>
+      </div>
+      <button id="close-ledger-btn" class="text-slate-400 hover:text-white">
+        <i data-lucide="x" class="w-4 h-4"></i>
+      </button>
+    </div>
+
+    <!-- Active Trades List -->
+    <div id="ledger-items" class="flex-1 overflow-y-auto py-4 space-y-3">
+      <div class="text-xs text-slate-500 text-center py-8">No open positions. Click "Trade" on any stock to open a position.</div>
+    </div>
+
+    <!-- Ledger Footer -->
+    <div class="border-t border-terminal-border pt-4 space-y-3">
+      <div class="flex justify-between text-xs">
+        <span class="text-terminal-subtext">Total Realized + Open P&L:</span>
+        <span class="font-bold" id="drawer-total-pnl">₹0.00</span>
+      </div>
+      <button id="squareoff-all-btn" class="w-full bg-rose-600/20 hover:bg-rose-600/30 text-rose-400 border border-rose-600/40 text-xs py-2 rounded-lg font-semibold transition-all">
+        Square-Off All Open Trades
+      </button>
+      <button id="reset-ledger-btn" class="w-full bg-slate-800 hover:bg-slate-700 text-slate-400 text-[11px] py-1.5 rounded transition-all">
+        Clear All History & Reset P&L
+      </button>
+    </div>
+  </div>
+
+  <script>
+    const INTERVAL_TOTAL = 180; // 3 minutes
+    let countdown = INTERVAL_TOTAL;
+    let marketData = [];
+    let activeFilter = 'ALL';
+    let searchQuery = '';
+    let sortMode = 'prob-desc';
+    let selectedStockForTrade = null;
+
+    // PERSISTENCE ENGINE: Load existing trades and realized P&L from localStorage
+    let ledger = JSON.parse(localStorage.getItem('paper_ledger') || '[]');
+    let totalPortfolioPnl = parseFloat(localStorage.getItem('paper_total_pnl') || '0');
+
+    function saveState() {
+      localStorage.setItem('paper_ledger', JSON.stringify(ledger));
+      localStorage.setItem('paper_total_pnl', totalPortfolioPnl.toString());
+      document.getElementById("active-orders-count").innerText = ledger.length;
+    }
+
+    function formatCountdown(sec) {
+      const mins = Math.floor(sec / 60);
+      const secs = sec % 60;
+      return `${mins}m ${secs < 10 ? '0' : ''}${secs}s`;
+    }
+
+    async function fetchLiveFeed() {
+      try {
+        const res = await fetch('signals.json?nocache=' + Date.now());
+        if (!res.ok) throw new Error('File not ready');
+        const payload = await res.json();
+
+        marketData = payload.stocks.map(s => ({
+          symbol: s.symbol,
+          name: s.symbol,
+          ltp: s.price,
+          ema9: s.ema9,
+          ema21: s.ema21,
+          rsi: s.rsi,
+          signal: s.signal,
+          prob: parseInt(s.probability) || 50,
+          risk: s.risk,
+          optionStrike: s.option_strike,
+          sl: s.stop_loss,
+          tp: s.target,
+          updated_at: s.updated_at
+        }));
+
+        document.getElementById('feed-status').innerText = 'Connected';
+        document.getElementById('feed-status').className = 'font-semibold text-emerald-400';
+        document.getElementById('last-updated-time').innerText = payload.last_updated.split(' ')[1] || payload.last_updated;
+
+        renderTable();
+        updateStatCards();
+        renderLedger();
+        updateLedgerPnL();
+
+      } catch (err) {
+        document.getElementById('feed-status').innerText = 'Waiting for Scanner...';
+        document.getElementById('feed-status').className = 'font-semibold text-amber-400';
+      }
+    }
+
+    function renderTable() {
+      const tbody = document.getElementById("stocks-table-body");
+      const emptyMsg = document.getElementById("no-results-msg");
+
+      let filtered = marketData.filter(stock => {
+        const matches = stock.symbol.toLowerCase().includes(searchQuery.toLowerCase());
+        if (!matches) return false;
+        if (activeFilter === "BUY") return stock.signal.includes("BUY") || stock.signal.includes("BULLISH");
+        if (activeFilter === "SELL") return stock.signal.includes("SELL") || stock.signal.includes("BEARISH");
+        if (activeFilter === "HIGH_PROB") return stock.prob >= 75;
+        return true;
+      });
+
+      filtered.sort((a, b) => {
+        if (sortMode === "prob-desc") return b.prob - a.prob;
+        if (sortMode === "prob-asc") return a.prob - b.prob;
+        if (sortMode === "risk-asc") return (a.risk === 'LOW' ? 1 : a.risk === 'MODERATE' ? 2 : 3) - (b.risk === 'LOW' ? 1 : b.risk === 'MODERATE' ? 2 : 3);
+        if (sortMode === "risk-desc") return (b.risk === 'LOW' ? 1 : b.risk === 'MODERATE' ? 2 : 3) - (a.risk === 'LOW' ? 1 : a.risk === 'MODERATE' ? 2 : 3);
+        if (sortMode === "ltp-desc") return b.ltp - a.ltp;
+        return 0;
+      });
+
+      if (filtered.length === 0) {
+        tbody.innerHTML = "";
+        emptyMsg.classList.remove("hidden");
+        return;
+      } else {
+        emptyMsg.classList.add("hidden");
+      }
+
+      tbody.innerHTML = filtered.map(stock => {
+        let signalClass = "bg-slate-800 text-slate-300 border-slate-700";
+        if (stock.signal === "BUY") signalClass = "bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 font-bold";
+        else if (stock.signal === "BULLISH BIAS") signalClass = "bg-blue-500/20 text-blue-400 border border-blue-500/30";
+        else if (stock.signal === "SELL") signalClass = "bg-rose-500/20 text-rose-400 border border-rose-500/40 font-bold";
+        else if (stock.signal === "BEARISH BIAS") signalClass = "bg-amber-500/20 text-amber-400 border border-amber-500/30";
+
+        let probColor = stock.prob >= 75 ? "text-emerald-400 font-bold" : "text-blue-400";
+        let riskBadge = `<span class="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[10px] font-bold">LOW</span>`;
+        if (stock.risk === 'HIGH') {
+          riskBadge = `<span class="px-2 py-0.5 rounded bg-rose-500/10 text-rose-400 border border-rose-500/20 text-[10px] font-bold">HIGH</span>`;
+        } else if (stock.risk === 'MODERATE') {
+          riskBadge = `<span class="px-2 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20 text-[10px] font-bold">MODERATE</span>`;
+        }
+
+        const isCE = stock.optionStrike.includes("CE");
+        const optBadge = stock.optionStrike === "HOLD" 
+          ? `<span class="px-2 py-1 rounded bg-slate-800 text-slate-400 text-[10px]">HOLD</span>`
+          : (isCE 
+            ? `<span class="px-2 py-1 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20 font-bold">${stock.optionStrike}</span>`
+            : `<span class="px-2 py-1 rounded bg-purple-500/10 text-purple-400 border border-purple-500/20 font-bold">${stock.optionStrike}</span>`);
+
+        return `
+          <tr class="hover:bg-terminal-card/60 transition-colors group">
+            <td class="py-3 px-4">
+              <div class="font-bold text-white group-hover:text-blue-400 transition-colors">${stock.symbol}</div>
+            </td>
+            <td class="py-3 px-3 font-semibold text-slate-100">₹${stock.ltp.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+            <td class="py-3 px-3 text-slate-300">₹${stock.ema9.toFixed(2)}</td>
+            <td class="py-3 px-3 text-slate-300">₹${stock.ema21.toFixed(2)}</td>
+            <td class="py-3 px-3">
+              <span class="${stock.rsi > 60 ? 'text-emerald-400 font-semibold' : (stock.rsi < 40 ? 'text-rose-400 font-semibold' : 'text-slate-300')}">
+                ${stock.rsi}
+              </span>
+            </td>
+            <td class="py-3 px-4">
+              <span class="px-2.5 py-1 rounded text-[11px] inline-block ${signalClass}">
+                ${stock.signal}
+              </span>
+            </td>
+            <td class="py-3 px-3">
+              <div class="flex items-center gap-1.5">
+                <span class="${probColor}">${stock.prob}%</span>
+                <div class="w-12 bg-slate-800 rounded-full h-1.5 hidden sm:block">
+                  <div class="bg-blue-500 h-1.5 rounded-full" style="width: ${stock.prob}%"></div>
+                </div>
+              </div>
+            </td>
+            <td class="py-3 px-3">${riskBadge}</td>
+            <td class="py-3 px-4">${optBadge}</td>
+            <td class="py-3 px-3">
+              <div class="text-[10px] text-emerald-400">TP: ₹${stock.tp.toFixed(1)}</div>
+              <div class="text-[10px] text-rose-400">SL: ₹${stock.sl.toFixed(1)}</div>
+            </td>
+            <td class="py-3 px-4 text-right">
+              <button onclick="openTradeModal('${stock.symbol}')" class="bg-blue-600/80 hover:bg-blue-500 text-white font-semibold px-3 py-1.5 rounded text-xs transition-all shadow hover:shadow-blue-500/20 active:scale-95">
+                Trade
+              </button>
+            </td>
+          </tr>
+        `;
+      }).join('');
+
+      lucide.createIcons();
+    }
+
+    function updateStatCards() {
+      const highProbCount = marketData.filter(s => s.prob >= 75).length;
+      const bullishCount = marketData.filter(s => s.signal.includes("BUY") || s.signal.includes("BULLISH")).length;
+      const bearishCount = marketData.filter(s => s.signal.includes("SELL") || s.signal.includes("BEARISH")).length;
+
+      document.getElementById("stat-high-prob").innerText = highProbCount;
+      document.getElementById("stat-bullish-count").innerText = bullishCount;
+      document.getElementById("stat-bearish-count").innerText = bearishCount;
+
+      document.getElementById("count-all").innerText = marketData.length;
+      document.getElementById("count-buy").innerText = bullishCount;
+      document.getElementById("count-sell").innerText = bearishCount;
+    }
+
+    window.openTradeModal = function(symbol) {
+      const stock = marketData.find(s => s.symbol === symbol);
+      if (!stock) return;
+      selectedStockForTrade = stock;
+
+      const isBuy = !stock.signal.includes("SELL") && !stock.signal.includes("BEARISH");
+      const badge = document.getElementById("modal-badge");
+      badge.innerText = isBuy ? "BUY ENTRY (CE CALL)" : "SELL ENTRY (PE PUT)";
+      badge.className = isBuy
+        ? "px-2 py-0.5 rounded text-xs font-bold uppercase bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
+        : "px-2 py-0.5 rounded text-xs font-bold uppercase bg-rose-500/20 text-rose-400 border border-rose-500/30";
+
+      document.getElementById("modal-symbol").innerText = stock.symbol;
+      document.getElementById("modal-price").innerText = `₹${stock.ltp.toFixed(2)}`;
+      document.getElementById("modal-option").innerText = stock.optionStrike;
+      document.getElementById("modal-sl").innerText = `₹${stock.sl.toFixed(2)}`;
+      document.getElementById("modal-tp").innerText = `₹${stock.tp.toFixed(2)}`;
+      document.getElementById("modal-prob").innerText = `${stock.prob}%`;
+      document.getElementById("modal-qty").value = 50;
+
+      document.getElementById("trade-modal").classList.remove("hidden");
+      document.getElementById("trade-modal").classList.add("flex");
+    };
+
+    function executeModalTrade() {
+      if (!selectedStockForTrade) return;
+      const qty = parseInt(document.getElementById("modal-qty").value) || 50;
+      const isBuy = !selectedStockForTrade.signal.includes("SELL") && !selectedStockForTrade.signal.includes("BEARISH");
+
+      const trade = {
+        id: Date.now(),
+        symbol: selectedStockForTrade.symbol,
+        type: isBuy ? 'BUY' : 'SELL',
+        entryPrice: selectedStockForTrade.ltp,
+        qty: qty,
+        contract: selectedStockForTrade.optionStrike,
+        sl: selectedStockForTrade.sl,
+        tp: selectedStockForTrade.tp,
+        time: new Date().toLocaleTimeString('en-US', { hour12: false })
+      };
+
+      ledger.push(trade);
+      saveState();
+
+      document.getElementById("trade-modal").classList.add("hidden");
+      document.getElementById("trade-modal").classList.remove("flex");
+
+      renderLedger();
+      updateLedgerPnL();
+      openLedgerDrawer();
+    }
+
+    function renderLedger() {
+      const container = document.getElementById("ledger-items");
+      if (ledger.length === 0) {
+        container.innerHTML = '<div class="text-xs text-slate-500 text-center py-8">No open positions. Click "Trade" on any stock to open a position.</div>';
+        return;
+      }
+
+      container.innerHTML = ledger.map(trade => {
+        const liveStock = marketData.find(s => s.symbol === trade.symbol);
+        const currentPrice = liveStock ? liveStock.ltp : trade.entryPrice;
+        const pnl = trade.type === 'BUY'
+          ? (currentPrice - trade.entryPrice) * trade.qty
+          : (trade.entryPrice - currentPrice) * trade.qty;
+
+        const pnlColor = pnl >= 0 ? 'text-emerald-400' : 'text-rose-400';
+
+        return `
+          <div class="bg-terminal-bg border border-terminal-border rounded-lg p-3 text-xs space-y-2">
+            <div class="flex justify-between items-center">
+              <div>
+                <span class="font-bold text-white">${trade.symbol}</span>
+                <span class="text-[10px] text-terminal-subtext ml-1.5">${trade.contract}</span>
+              </div>
+              <span class="px-1.5 py-0.5 rounded text-[10px] font-bold ${trade.type === 'BUY' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-rose-500/20 text-rose-400'}">
+                ${trade.type} (${trade.qty})
+              </span>
+            </div>
+            <div class="flex justify-between text-slate-300 text-[11px]">
+              <span>Entry: ₹${trade.entryPrice.toFixed(2)}</span>
+              <span>LTP: ₹${currentPrice.toFixed(2)}</span>
+            </div>
+            <div class="flex justify-between items-center border-t border-terminal-border/50 pt-1.5">
+              <span class="text-terminal-subtext">P&L:</span>
+              <span class="font-bold ${pnlColor}">₹${pnl.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+            </div>
+            <button onclick="closeTrade(${trade.id})" class="w-full mt-1 bg-slate-800 hover:bg-rose-600/30 text-slate-300 hover:text-rose-300 py-1 rounded text-[10px] transition-all">
+              Square Off
+            </button>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function updateLedgerPnL() {
+      let openPnl = 0;
+      ledger.forEach(trade => {
+        const liveStock = marketData.find(s => s.symbol === trade.symbol);
+        if (liveStock) {
+          const currentPrice = liveStock.ltp;
+          const pnl = trade.type === 'BUY'
+            ? (currentPrice - trade.entryPrice) * trade.qty
+            : (trade.entryPrice - currentPrice) * trade.qty;
+          openPnl += pnl;
+        }
+      });
+
+      const displayPnl = totalPortfolioPnl + openPnl;
+      const el = document.getElementById("stat-portfolio-pnl");
+      const drawerEl = document.getElementById("drawer-total-pnl");
+      
+      const formatted = `${displayPnl >= 0 ? '+' : ''}₹${displayPnl.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+      el.innerText = formatted;
+      drawerEl.innerText = formatted;
+
+      if (displayPnl >= 0) {
+        el.className = "text-2xl font-bold font-mono text-emerald-400";
+        drawerEl.className = "font-bold text-emerald-400";
+      } else {
+        el.className = "text-2xl font-bold font-mono text-rose-400";
+        drawerEl.className = "font-bold text-rose-400";
+      }
+    }
+
+    window.closeTrade = function(id) {
+      const idx = ledger.findIndex(t => t.id === id);
+      if (idx !== -1) {
+        const trade = ledger[idx];
+        const liveStock = marketData.find(s => s.symbol === trade.symbol);
+        const currentPrice = liveStock ? liveStock.ltp : trade.entryPrice;
+        const pnl = trade.type === 'BUY'
+          ? (currentPrice - trade.entryPrice) * trade.qty
+          : (trade.entryPrice - currentPrice) * trade.qty;
+
+        totalPortfolioPnl += pnl;
+        ledger.splice(idx, 1);
+        saveState();
+        renderLedger();
+        updateLedgerPnL();
+      }
+    };
+
+    function openLedgerDrawer() {
+      document.getElementById("ledger-drawer").classList.remove("translate-x-full");
+    }
+
+    function closeLedgerDrawer() {
+      document.getElementById("ledger-drawer").classList.add("translate-x-full");
+    }
+
+    document.addEventListener("DOMContentLoaded", () => {
+      // 1. Restore stored trades and count immediately upon DOM ready
+      document.getElementById("active-orders-count").innerText = ledger.length;
+      document.getElementById("countdown-timer").innerText = formatCountdown(countdown);
+      renderLedger();
+      updateLedgerPnL();
+
+      // 2. Fetch live data
+      fetchLiveFeed();
+
+      // Filter tabs
+      document.querySelectorAll(".filter-btn").forEach(btn => {
+        btn.addEventListener("click", () => {
+          document.querySelectorAll(".filter-btn").forEach(b => {
+            b.classList.remove("active-filter", "bg-blue-600", "text-white", "font-semibold");
+            b.classList.add("text-slate-400");
+          });
+          btn.classList.add("active-filter", "bg-blue-600", "text-white", "font-semibold");
+          btn.classList.remove("text-slate-400");
+          activeFilter = btn.getAttribute("data-filter");
+          renderTable();
+        });
+      });
+
+      // Search
+      document.getElementById("search-input").addEventListener("input", (e) => {
+        searchQuery = e.target.value.trim();
+        renderTable();
+      });
+
+      // Sort
+      document.getElementById("sort-select").addEventListener("change", (e) => {
+        sortMode = e.target.value;
+        renderTable();
+      });
+
+      // Manual re-poll
+      document.getElementById("manual-refresh-btn").addEventListener("click", () => {
+        const icon = document.getElementById("refresh-icon");
+        icon.classList.add("animate-spin");
+        fetchLiveFeed();
+        countdown = INTERVAL_TOTAL;
+        document.getElementById("countdown-timer").innerText = formatCountdown(countdown);
+        setTimeout(() => icon.classList.remove("animate-spin"), 500);
+      });
+
+      // Ledger drawer
+      document.getElementById("view-orders-btn").addEventListener("click", openLedgerDrawer);
+      document.getElementById("close-ledger-btn").addEventListener("click", closeLedgerDrawer);
+      document.getElementById("squareoff-all-btn").addEventListener("click", () => {
+        while (ledger.length > 0) {
+          closeTrade(ledger[0].id);
+        }
+      });
+
+      // Full Ledger Reset Option
+      document.getElementById("reset-ledger-btn").addEventListener("click", () => {
+        if (confirm("Are you sure you want to reset all trades and P&L history to ₹0.00?")) {
+          ledger = [];
+          totalPortfolioPnl = 0;
+          saveState();
+          renderLedger();
+          updateLedgerPnL();
+        }
+      });
+
+      // Trade modal
+      document.getElementById("confirm-trade-btn").addEventListener("click", executeModalTrade);
+      document.getElementById("close-modal-btn").addEventListener("click", () => {
+        document.getElementById("trade-modal").classList.add("hidden");
+        document.getElementById("trade-modal").classList.remove("flex");
+      });
+
+      // 3-Minute countdown loop
+      setInterval(() => {
+        countdown--;
+        if (countdown <= 0) {
+          fetchLiveFeed();
+          countdown = INTERVAL_TOTAL;
+        }
+        document.getElementById("countdown-timer").innerText = formatCountdown(countdown);
+      }, 1000);
+
+      // System clock
+      setInterval(() => {
+        const now = new Date();
+        const timeStr = now.toLocaleTimeString('en-US', { hour12: false });
+        const mobileClock = document.getElementById("mobile-clock");
+        if (mobileClock) mobileClock.innerText = timeStr;
+      }, 1000);
+    });
+  </script>
+</body>
+</html>
