@@ -213,13 +213,11 @@
   </div>
 
   <script>
-    // State management
     let rawSignalsData = null;
     let activeFilter = 'ALL';
-    let pollInterval = 180; // 3 minutes in seconds
+    let pollInterval = 180;
     let secondsRemaining = pollInterval;
 
-    // Load persistent paper trading ledger
     let paperTrades = JSON.parse(localStorage.getItem('tradeWithMe_ledger') || '[]');
 
     function updateLedgerUI() {
@@ -233,18 +231,18 @@
       modal.classList.toggle('hidden');
     }
 
-    function addPaperTrade(stock) {
+    function addPaperTrade(stock, resolvedStrike) {
       const trade = {
         id: Date.now(),
         time: new Date().toLocaleTimeString(),
         symbol: stock.symbol || stock.Instrument || 'N/A',
         type: (stock.signal || stock.Intraday_Signal || 'BUY').toUpperCase(),
         entry: stock.ltp || stock.LTP || stock.price || 0,
-        strike: stock.strike || stock.Recommended_Strike || 'ATM'
+        strike: resolvedStrike || stock.strike || stock.Recommended_Strike || 'ATM'
       };
       paperTrades.unshift(trade);
       updateLedgerUI();
-      alert(`Paper trade placed: ${trade.type} ${trade.symbol} @ ₹${trade.entry}`);
+      alert(`Paper trade logged: ${trade.type} ${trade.symbol} (${trade.strike}) @ ₹${trade.entry}`);
     }
 
     function removePaperTrade(id) {
@@ -289,7 +287,6 @@
       });
     }
 
-    // High performance cache-busting fetch function
     async function fetchLiveData(isManual = false) {
       const connStatus = document.getElementById('conn-status');
       const repollIcon = document.getElementById('repoll-icon');
@@ -299,7 +296,6 @@
       connStatus.className = "text-amber-400 font-medium";
 
       try {
-        // Appending unique epoch time forces both mobile browsers & proxies to bypass cache
         const cacheBusterUrl = `signals.json?nocache=${new Date().getTime()}`;
         const response = await fetch(cacheBusterUrl, {
           cache: "no-store",
@@ -313,13 +309,11 @@
         
         rawSignalsData = await response.json();
 
-        // Update timestamp display
         const updatedTime = rawSignalsData.timestamp || rawSignalsData.updated_at || new Date().toLocaleTimeString();
         document.getElementById('last-updated').innerText = updatedTime;
         connStatus.innerText = "Connected";
         connStatus.className = "text-emerald-400 font-medium";
 
-        // Reset countdown timer on fresh data fetch
         secondsRemaining = pollInterval;
 
         updateSummaryCards();
@@ -382,7 +376,6 @@
       const searchQuery = (document.getElementById('search-input').value || '').trim().toUpperCase();
       const sortVal = document.getElementById('sort-select').value;
 
-      // Filtering
       let filtered = list.filter(item => {
         const sym = (item.symbol || item.Instrument || '').toUpperCase();
         const sig = (item.signal || item.Intraday_Signal || '').toUpperCase();
@@ -397,7 +390,6 @@
         return true;
       });
 
-      // Sorting
       filtered.sort((a, b) => {
         const probA = parseFloat(a.win_prob || a.win_probability || a.Win_Prob || 0);
         const probB = parseFloat(b.win_prob || b.win_probability || b.Win_Prob || 0);
@@ -414,27 +406,24 @@
 
       filtered.forEach(item => {
         const sym = item.symbol || item.Instrument || 'N/A';
-        const ltp = item.ltp || item.LTP || item.price || 0;
+        const ltp = parseFloat(item.ltp || item.LTP || item.price || 0);
         const ema9 = item.ema_9 || item['9_EMA'] || item.ema9 || '-';
         const ema21 = item.ema_21 || item['21_EMA'] || item.ema21 || '-';
         const rsi = item.rsi || item['RSI_(14)'] || item.rsi14 || '-';
         const sig = (item.signal || item.Intraday_Signal || 'NEUTRAL').toUpperCase();
         const prob = item.win_prob || item.win_probability || item.Win_Prob || 50;
-        const risk = item.risk || item.risk_factor || item.Risk_Factor || 'Normal';
-        const strike = item.strike || item.recommended_strike || item.Recommended_Strike || 'ATM';
+        const risk = item.risk || item.risk_factor || item.Risk_Factor || 'MODERATE';
 
-        // Extract TP and SL from JSON keys or compute dynamically using ATR ratio
-        let tp = item.tp || item.target || item.Target || item.TP || null;
-        let sl = item.sl || item.stop_loss || item.StopLoss || item.SL || null;
-
-        const price = parseFloat(ltp) || 0;
         const isBuy = sig.includes('BUY') || sig.includes('BULLISH');
         const isSell = sig.includes('SELL') || sig.includes('BEARISH');
 
-        if ((!tp || !sl) && price > 0) {
-          // Dynamic calculation: 1.5% Target, 0.8% Stop Loss
-          tp = isBuy ? (price * 1.015).toFixed(1) : (price * 0.985).toFixed(1);
-          sl = isBuy ? (price * 0.992).toFixed(1) : (price * 1.008).toFixed(1);
+        // Target / Stop-Loss Logic
+        let tp = item.tp || item.target || item.Target || item.TP || null;
+        let sl = item.sl || item.stop_loss || item.StopLoss || item.SL || null;
+
+        if ((!tp || !sl) && ltp > 0) {
+          tp = isBuy ? (ltp * 1.015).toFixed(2) : (ltp * 0.985).toFixed(2);
+          sl = isBuy ? (ltp * 0.992).toFixed(2) : (ltp * 1.008).toFixed(2);
         }
 
         const slTargetHtml = (tp && sl)
@@ -444,11 +433,30 @@
              </div>`
           : `<span class="text-slate-500 text-[11px]">Dynamic ATR</span>`;
 
+        // Dynamic Strike Selection (e.g. 1300 CE / 960 CE)
+        let strike = item.strike || item.recommended_strike || item.Recommended_Strike || null;
+        if (!strike || strike === 'ATM' || strike === 'Defined by ATR') {
+          if (ltp > 0) {
+            let step = 10;
+            if (ltp < 250) step = 2.5;
+            else if (ltp < 500) step = 5;
+            else if (ltp < 1500) step = 10;
+            else if (ltp < 3000) step = 20;
+            else step = 50;
+
+            const rounded = Math.round(ltp / step) * step;
+            const optionType = isSell ? 'PE' : 'CE';
+            strike = `${rounded % 1 === 0 ? rounded : rounded.toFixed(1)} ${optionType}`;
+          } else {
+            strike = isSell ? 'ATM PE' : 'ATM CE';
+          }
+        }
+
         const tr = document.createElement('tr');
         tr.className = "hover:bg-slate-800/40 transition duration-150";
         tr.innerHTML = `
           <td class="px-4 py-3 font-sans font-bold text-white">${sym}</td>
-          <td class="px-4 py-3 text-slate-100 font-semibold">₹${Number(ltp).toFixed(2)}</td>
+          <td class="px-4 py-3 text-slate-100 font-semibold">₹${ltp.toFixed(2)}</td>
           <td class="px-4 py-3 text-slate-400">${Number(ema9).toFixed(1)}</td>
           <td class="px-4 py-3 text-slate-400">${Number(ema21).toFixed(1)}</td>
           <td class="px-4 py-3 font-semibold ${rsi >= 60 ? 'text-emerald-400' : rsi <= 40 ? 'text-rose-400' : 'text-slate-300'}">${Number(rsi).toFixed(1)}</td>
@@ -465,10 +473,18 @@
             <span class="font-bold ${prob >= 75 ? 'text-amber-400' : 'text-slate-300'}">${prob}%</span>
           </td>
           <td class="px-4 py-3 text-slate-400 text-[11px]">${risk}</td>
-          <td class="px-4 py-3 text-blue-400 font-medium">${strike}</td>
+          <td class="px-4 py-3">
+            <span class="px-2 py-0.5 rounded text-xs font-bold ${
+              strike.includes('CE') ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20' :
+              strike.includes('PE') ? 'bg-rose-500/10 text-rose-400 border border-rose-500/20' :
+              'text-blue-400'
+            }">
+              ${strike}
+            </span>
+          </td>
           <td class="px-4 py-3">${slTargetHtml}</td>
           <td class="px-4 py-3 text-right">
-            <button onclick='addPaperTrade(${JSON.stringify(item)})' class="px-2.5 py-1 rounded bg-blue-600 hover:bg-blue-500 text-white font-sans text-xs font-semibold shadow-sm transition">
+            <button onclick='addPaperTrade(${JSON.stringify(item)}, "${strike}")' class="px-2.5 py-1 rounded bg-blue-600 hover:bg-blue-500 text-white font-sans text-xs font-semibold shadow-sm transition">
               Trade
             </button>
           </td>
@@ -477,7 +493,6 @@
       });
     }
 
-    // Countdown Polling Loop
     setInterval(() => {
       secondsRemaining--;
       if (secondsRemaining <= 0) {
@@ -489,7 +504,6 @@
       }
     }, 1000);
 
-    // Initial boot on load
     window.addEventListener('DOMContentLoaded', () => {
       updateLedgerUI();
       fetchLiveData();
