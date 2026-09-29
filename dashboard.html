@@ -171,9 +171,9 @@
     </table>
   </section>
 
-  <!-- Paper Ledger Modal -->
+  <!-- Paper Ledger Modal with QTY Column -->
   <div id="ledger-modal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
-    <div class="bg-slate-900 border border-slate-800 rounded-xl w-full max-w-2xl max-h-[85vh] flex flex-col shadow-2xl">
+    <div class="bg-slate-900 border border-slate-800 rounded-xl w-full max-w-3xl max-h-[85vh] flex flex-col shadow-2xl">
       <div class="flex items-center justify-between p-4 border-b border-slate-800">
         <div class="flex items-center gap-2">
           <i class="fa-solid fa-wallet text-emerald-400"></i>
@@ -191,6 +191,7 @@
               <th class="pb-2">Time</th>
               <th class="pb-2">Symbol</th>
               <th class="pb-2">Type</th>
+              <th class="pb-2">Qty</th>
               <th class="pb-2">Entry Price</th>
               <th class="pb-2">Strike</th>
               <th class="pb-2 text-right">Action</th>
@@ -213,6 +214,21 @@
   </div>
 
   <script>
+    // Standard NSE F&O lot sizes
+    const LOT_SIZES = {
+      RELIANCE: 250,
+      TCS: 175,
+      HDFCBANK: 550,
+      ICICIBANK: 700,
+      INFY: 400,
+      SBIN: 750,
+      BHARTIARTL: 475,
+      ITC: 1600,
+      KOTAKBANK: 400,
+      LT: 150,
+      AXISBANK: 625
+    };
+
     let rawSignalsData = null;
     let activeFilter = 'ALL';
     let pollInterval = 180;
@@ -232,17 +248,26 @@
     }
 
     function addPaperTrade(stock, resolvedStrike) {
+      const sym = stock.symbol || stock.Instrument || 'N/A';
+      const cleanSym = sym.replace('.NS', '').trim();
+      const price = parseFloat(stock.ltp || stock.LTP || stock.price || 0);
+
+      // Select standard F&O lot size or compute a cash quantity
+      const calculatedQty = LOT_SIZES[cleanSym] || (price > 0 ? Math.max(1, Math.floor(25000 / price)) : 50);
+
       const trade = {
         id: Date.now(),
         time: new Date().toLocaleTimeString(),
-        symbol: stock.symbol || stock.Instrument || 'N/A',
+        symbol: sym,
         type: (stock.signal || stock.Intraday_Signal || 'BUY').toUpperCase(),
-        entry: stock.ltp || stock.LTP || stock.price || 0,
+        qty: calculatedQty,
+        entry: price,
         strike: resolvedStrike || stock.strike || stock.Recommended_Strike || 'ATM'
       };
+
       paperTrades.unshift(trade);
       updateLedgerUI();
-      alert(`Paper trade logged: ${trade.type} ${trade.symbol} (${trade.strike}) @ ₹${trade.entry}`);
+      alert(`Paper trade placed: ${trade.type} ${trade.symbol} | Qty: ${trade.qty} (${trade.strike}) @ ₹${trade.entry.toFixed(2)}`);
     }
 
     function removePaperTrade(id) {
@@ -275,6 +300,7 @@
           <td class="py-2.5 text-slate-400">${t.time}</td>
           <td class="py-2.5 font-bold text-white">${t.symbol}</td>
           <td class="py-2.5 ${isBuy ? 'text-emerald-400 font-semibold' : 'text-rose-400 font-semibold'}">${t.type}</td>
+          <td class="py-2.5 font-bold text-amber-400">${t.qty || 1}</td>
           <td class="py-2.5">₹${Number(t.entry).toFixed(2)}</td>
           <td class="py-2.5 text-blue-400">${t.strike}</td>
           <td class="py-2.5 text-right">
