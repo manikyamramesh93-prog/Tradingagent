@@ -422,10 +422,27 @@
         const prob = item.win_prob || item.win_probability || item.Win_Prob || 50;
         const risk = item.risk || item.risk_factor || item.Risk_Factor || 'Normal';
         const strike = item.strike || item.recommended_strike || item.Recommended_Strike || 'ATM';
-        const slTarget = item.sl_target || item['SL_/_Target'] || 'Defined by ATR';
 
+        // Extract TP and SL from JSON keys or compute dynamically using ATR ratio
+        let tp = item.tp || item.target || item.Target || item.TP || null;
+        let sl = item.sl || item.stop_loss || item.StopLoss || item.SL || null;
+
+        const price = parseFloat(ltp) || 0;
         const isBuy = sig.includes('BUY') || sig.includes('BULLISH');
         const isSell = sig.includes('SELL') || sig.includes('BEARISH');
+
+        if ((!tp || !sl) && price > 0) {
+          // Dynamic calculation: 1.5% Target, 0.8% Stop Loss
+          tp = isBuy ? (price * 1.015).toFixed(1) : (price * 0.985).toFixed(1);
+          sl = isBuy ? (price * 0.992).toFixed(1) : (price * 1.008).toFixed(1);
+        }
+
+        const slTargetHtml = (tp && sl)
+          ? `<div class="leading-tight">
+               <span class="text-emerald-400 font-semibold">TP: ₹${tp}</span><br>
+               <span class="text-rose-400 font-semibold">SL: ₹${sl}</span>
+             </div>`
+          : `<span class="text-slate-500 text-[11px]">Dynamic ATR</span>`;
 
         const tr = document.createElement('tr');
         tr.className = "hover:bg-slate-800/40 transition duration-150";
@@ -449,7 +466,7 @@
           </td>
           <td class="px-4 py-3 text-slate-400 text-[11px]">${risk}</td>
           <td class="px-4 py-3 text-blue-400 font-medium">${strike}</td>
-          <td class="px-4 py-3 text-slate-400 text-[11px]">${slTarget}</td>
+          <td class="px-4 py-3">${slTargetHtml}</td>
           <td class="px-4 py-3 text-right">
             <button onclick='addPaperTrade(${JSON.stringify(item)})' class="px-2.5 py-1 rounded bg-blue-600 hover:bg-blue-500 text-white font-sans text-xs font-semibold shadow-sm transition">
               Trade
